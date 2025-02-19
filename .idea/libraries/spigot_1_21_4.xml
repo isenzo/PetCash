@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="spigot-1.21.4">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../../BuildTool/spigot-1.21.4.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/authlib-1.5.21.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

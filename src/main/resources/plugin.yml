@@ -1,0 +1,27 @@
+name: PetPlugin
+version: "1.0"
+main: org.isenzo.petPlugin.PetMiningPlugin
+api-version: "1.21"
+description: "Plugin do zarządzania zwierzakami w grze"
+libraries:
+  - "org.mongodb:mongodb-driver-sync:4.9.1"
+author: "isenzo"
+
+commands:
+  pet:
+    description: "Główna komenda do zarządzania zwierzakami"
+    usage: "/pet <subcommand>"
+    aliases: ["pets"]
+    permission: petplugin.use
+    permission-message: "Nie masz uprawnień do używania tej komendy."
+  coinblock:
+    description: "Stawia coin block"
+    usage: /coinblock <hp>
+  coinsword:
+    description: Daje graczowi specjalny miecz do niszczenia coinblocków
+    usage: /coinsword
+
+permissions:
+  petplugin.use:
+    description: "Pozwala używać komendy /pet"
+    default: true

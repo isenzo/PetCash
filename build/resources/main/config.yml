@@ -1,0 +1,43 @@
+
+# MongoDB Connection
+mongodb:
+  uri: "mongodb://localhost:27017"
+  database: "PetPlug"
+
+# Pet Settings
+pets:
+  max_owned: 10
+  max_active: 5
+  experience:
+    base_requirement: 1000
+    level_multiplier: 1.5
+
+# Mining Settings
+mining:
+  damage_cap: 100
+  block_respawn_time: 10
+  coin_blocks:
+    base_health: 1000
+    rewards:
+      currency:
+        min: 10
+        max: 50
+      experience:
+        player: 100
+        pet: 50
+
+# Pet Types
+pet_types:
+  silver:
+    name: "Silver Pet"
+    base_damage: 10
+    iron_multiplier: 1.5
+  radiation:
+    name: "Radiation Pet"
+    base_damage: 8
+    radiation_resistance: true
+
+# GUI Settings
+gui:
+  title: "Pet Management"
+  rows: 6
