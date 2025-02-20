@@ -30,34 +30,35 @@ public class PetGUI {
         int slot = 10;
         for (Pet pet : pets) {
             if (slot >= 17) break;
-            menu.setItem(slot++, createPetItem(pet));
+            boolean isPetActive = petManager.isPetActiveInDatabase(pet.getId());
+            menu.setItem(slot++, createPetItem(pet, isPetActive));
         }
 
         player.openInventory(menu);
     }
 
-    private ItemStack createPetItem(Pet pet) {
+    private ItemStack createPetItem(Pet pet, Boolean isPetActive) {
         ItemStack item = SkullUtil.getCustomHead(BASE64);
         ItemMeta meta = item.getItemMeta();
 
         meta.setDisplayName(formatName(pet));
-        meta.setLore(createLore(pet));
+        meta.setLore(createLore(pet, isPetActive));
         item.setItemMeta(meta);
 
         return item;
     }
 
     private String formatName(Pet pet) {
-        return ChatColor.GOLD + pet.getName() + ChatColor.GRAY + "[LvL " + ChatColor.GREEN +  pet.getLevel() + ChatColor.GRAY +  "]";
+        return "§6" + pet.getName() + "§8[§2LvL §a" + pet.getLevel() + "§8]";
     }
 
-    private List<String> createLore(Pet pet) {
+    private List<String> createLore(Pet pet, boolean isActive) {
         return Arrays.asList(
-                ChatColor.GRAY + "Type: " + ChatColor.GREEN + pet.getType(),
-                ChatColor.GRAY + "XP: " + ChatColor.AQUA + pet.getExperience(),
-                ChatColor.GRAY + "ID: " + ChatColor.YELLOW + pet.getId(),
+                "§7Type§f: " + ChatColor.GREEN + pet.getType(),
+                "§7XP§f: " + ChatColor.AQUA + pet.getExperience(),
+                "§7ID§f: " + ChatColor.YELLOW + pet.getId(),
                 "",
-                pet.isActive() ? ChatColor.RED + "▶ Click to despawn!" : ChatColor.GREEN + "▶ Click to summon!"
+                isActive ? "§8▶ §7Click to §cdespawn!" : ChatColor.GREEN + "§8▶ §7Click to §asummon!"
         );
     }
 }

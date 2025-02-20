@@ -114,7 +114,7 @@ public class PetCommand implements CommandExecutor {
         }
 
         petManager.despawnPet(player, petId);
-        petSummoner.despawnPet(player, pet);
+        petSummoner.despawnPetOnCommand(player, pet);
         player.sendMessage(ChatColor.YELLOW + "You have despawned " + pet.getName() + ".");
     }
 

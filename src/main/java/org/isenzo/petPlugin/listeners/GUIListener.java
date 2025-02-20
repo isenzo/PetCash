@@ -103,14 +103,13 @@ public class GUIListener implements Listener {
             String type = itemName.replace(" Pet", "").trim();
             if (petManager.canPurchasePet(player, type)) {
                 petManager.purchasePet(player, type);
-                player.closeInventory(); // 📌 Zamykamy GUI po zakupie
+                player.closeInventory();
             } else {
-                player.sendMessage(ChatColor.RED + "❌ You cannot purchase this pet right now!");
+                player.sendMessage(ChatColor.RED + "You cannot purchase this pet right now!");
             }
         }
     }
 
-    // 📌 Pobiera ID peta z lore przedmiotu
     private String getPetIdFromItem(ItemStack item) {
         ItemMeta meta = item.getItemMeta();
         if (meta == null || meta.getLore() == null) return null;
@@ -123,7 +122,6 @@ public class GUIListener implements Listener {
         return null;
     }
 
-    // 📌 Sprawdza, czy pet jest aktywny
     private boolean isPetActive(List<String> lore) {
         for (String line : lore) {
             if (ChatColor.stripColor(line).contains("Currently Active")) {

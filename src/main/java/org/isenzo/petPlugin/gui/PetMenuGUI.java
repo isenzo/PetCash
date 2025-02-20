@@ -32,7 +32,6 @@ public class PetMenuGUI {
     private void updateInventory() {
         inventory.clear();
 
-        // Add owned pets
         List<Pet> pets = petManager.getPlayerPets(player);
         int slot = 0;
 
@@ -41,7 +40,6 @@ public class PetMenuGUI {
             inventory.setItem(slot++, petItem);
         }
 
-        // Add "Get New Pet" button if player can own more pets
         if (pets.size() < petManager.getMaxOwnedPets()) {
             ItemStack newPetItem = new ItemStack(Material.EMERALD);
             ItemMeta meta = newPetItem.getItemMeta();

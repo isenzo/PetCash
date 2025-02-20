@@ -1,6 +1,5 @@
 package org.isenzo.petPlugin.models;
 
-import com.mongodb.client.model.Filters;
 import lombok.Getter;
 import lombok.Setter;
 import org.bson.Document;
@@ -10,13 +9,12 @@ import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.isenzo.petPlugin.PetMiningPlugin;
+import org.isenzo.petPlugin.managers.PetManager;
 import org.isenzo.petPlugin.utils.SkullUtil;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -27,13 +25,16 @@ public class Pet {
     private int level;
     private double experience;
     private Player owner;
+    private UUID armorStandId;
     private ArmorStand entity;
     private boolean active;
     private int positionIndex;
 
     private static final String BASE64 = "d42e9dbd6eb544f6bb59cb2569e9113d750931e3ad01fd586eebd0f071e492d0";
 
-    public Pet(String id, String name, String type, Player owner, int positionIndex) {
+    private transient PetManager petManager;
+
+    public Pet(String id, String name, String type, Player owner, int positionIndex, PetManager petManager) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -42,28 +43,36 @@ public class Pet {
         this.experience = 0;
         this.active = false;
         this.positionIndex = positionIndex;
+        this.petManager = petManager;
     }
 
     public void spawn(Location location) {
-        if (entity != null && !entity.isDead()) return;
+        if (Objects.nonNull(entity) && !entity.isDead()) {
+            entity.remove();
+        }
 
-        entity = (ArmorStand) owner.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
+        entity = (ArmorStand) owner.getWorld().spawnEntity(owner.getLocation().add(0, 0.5, 0), EntityType.ARMOR_STAND);
         entity.setVisible(false);
         entity.setSmall(true);
-        entity.setCustomName(ChatColor.GOLD + name);
+        entity.setCustomName(ChatColor.GOLD + name + " §8[§2Level §a" + level + "§8]");
         entity.setCustomNameVisible(true);
         entity.setGravity(false);
-
         entity.getEquipment().setHelmet(SkullUtil.getCustomHead(BASE64));
+
         active = true;
+        armorStandId = entity.getUniqueId();
+
+        if(Objects.nonNull(petManager)) {
+            petManager.updatePetInDatabase(this);
+        }
     }
 
     public void moveToPlayerSmoothly() {
         if (entity == null || !active || owner == null) return;
 
-        double angle = (positionIndex * (2 * Math.PI)) / 5;
-        double offsetX = Math.cos(angle) * 1.5;
-        double offsetZ = Math.sin(angle) * 1.5;
+        double angle = (positionIndex * (2.3 * Math.PI)) / 5;
+        double offsetX = Math.cos(angle) * 1.2;
+        double offsetZ = Math.sin(angle) * 1.2;
 
         Location targetLocation = owner.getLocation().add(offsetX, 1.5, offsetZ);
 
@@ -74,47 +83,44 @@ public class Pet {
         ));
     }
 
-    public void updatePetInfo() {
-        Document doc = PetMiningPlugin.getInstance().getDatabase().getCollection("pets")
-                .find(Filters.eq("_id", this.id))
-                .first();
-
-        if (doc != null) {
-            int newLevel = doc.containsKey("level") ? doc.getInteger("level") : this.level;
-            double newExp = doc.containsKey("experience") ? doc.getDouble("experience") : this.experience;
-
-            if (newLevel != this.level || newExp != this.experience) {
-                this.level = newLevel;
-                this.experience = newExp;
-
-                Bukkit.getScheduler().runTask(PetMiningPlugin.getInstance(), this::updateNameAndLore);
-            }
-        }
-    }
-
-    private void updateNameAndLore() {
-        if (entity == null || entity.isDead()) return;
-
-        entity.setCustomName(ChatColor.GOLD + name + ChatColor.GRAY + " [LvL " + ChatColor.GREEN + level + ChatColor.GRAY + "]");
-
-        ItemStack skull = SkullUtil.getCustomHead(BASE64);
-        ItemMeta meta = skull.getItemMeta();
-        if (meta != null) {
-            List<String> lore = new ArrayList<>();
-            lore.add(ChatColor.GRAY + "Poziom: " + ChatColor.YELLOW + level);
-            lore.add(ChatColor.GRAY + "Exp: " + ChatColor.GREEN + experience);
-            meta.setLore(lore);
-            skull.setItemMeta(meta);
-        }
-
-        entity.getEquipment().setHelmet(skull);
-    }
-
     public void despawn() {
-        if (entity != null && !entity.isDead()) {
-            entity.remove();
+        if (Objects.nonNull(entity)) {
+            if(!entity.isDead()) {
+                Bukkit.getLogger().info("[DEBUG] Usuwam encję peta: " + name);
+                entity.remove();
+            }else {
+                Bukkit.getLogger().info("[DEBUG] Encja peta już była martwa: " + name);
+            }
+            entity = null;
         }
-        active = false;
+    }
+
+    public void killArmorStand() {
+        if (armorStandId == null) {
+            Bukkit.getLogger().warning("[ERROR] Próba zabicia peta, ale armorStandId jest NULL!");
+            return;
+        }
+
+        String armorStandUUID = armorStandId.toString();
+
+        Bukkit.getScheduler().runTask(PetMiningPlugin.getInstance(), () -> {
+            boolean found = false;
+            for (ArmorStand armorStand : owner.getWorld().getEntitiesByClass(ArmorStand.class)) {
+                if (armorStand.getUniqueId().toString().equals(armorStandUUID)) {
+                    armorStand.remove();
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "kill " + armorStandUUID);
+            }
+
+            Bukkit.getLogger().info("[DEBUG] Usunięto ArmorStand: " + armorStandUUID);
+        });
+
+        armorStandId = null; // Resetujemy ID w obiekcie
     }
 
     public Document toDocument() {
@@ -126,6 +132,7 @@ public class Pet {
                 .append("experience", experience)
                 .append("owner", owner.getUniqueId().toString())
                 .append("active", active)
-                .append("positionIndex", positionIndex);
+                .append("positionIndex", positionIndex)
+                .append("armorStandId", armorStandId != null ? armorStandId.toString() : null);
     }
 }

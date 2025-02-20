@@ -1,5 +1,6 @@
 package org.isenzo.petPlugin.models;
 
+import lombok.Getter;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -9,6 +10,7 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+@Getter
 public class HealthBarArmorStand {
     private ArmorStand stand;
 
@@ -63,9 +65,5 @@ public class HealthBarArmorStand {
         if (stand != null && !stand.isDead()) {
             stand.remove();
         }
-    }
-
-    public ArmorStand getStand() {
-        return stand;
     }
 }

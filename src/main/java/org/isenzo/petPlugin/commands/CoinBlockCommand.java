@@ -14,10 +14,6 @@ import org.isenzo.petPlugin.PetMiningPlugin;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Komenda do stawiania \"CoinBlock\" (bariera z HP).
- * /coinblock <hp>
- */
 public class CoinBlockCommand implements CommandExecutor, TabCompleter {
 
     @Override
@@ -41,13 +37,11 @@ public class CoinBlockCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Szukamy wolnego miejsca (np. max 5 bloków do przodu)
         Block targetBlock = null;
         BlockIterator iterator = new BlockIterator(player, 5);
         while (iterator.hasNext()) {
             Block b = iterator.next();
             if (b.getType() == Material.AIR) {
-                // Znaleziono pierwsze puste pole
                 targetBlock = b;
                 break;
             }
@@ -57,9 +51,7 @@ public class CoinBlockCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Zamieniamy wolny blok na barrier (nasz coin block)
         targetBlock.setType(Material.BARRIER);
-        // Dodajemy do coinBlockManager
         PetMiningPlugin.getInstance().getCoinBlockManager()
                 .addCoinBlock(targetBlock.getLocation(), hp);
 
@@ -72,8 +64,8 @@ public class CoinBlockCommand implements CommandExecutor, TabCompleter {
         List<String> suggestions = new ArrayList<>();
         if (args.length == 1) {
             suggestions.add("10");
-                    suggestions.add("50");
-                            suggestions.add("100");
+            suggestions.add("50");
+            suggestions.add("100");
         }
         return suggestions;
     }

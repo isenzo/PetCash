@@ -17,7 +17,7 @@ public class CoinBlock {
     private boolean breaking;
     private long lastDamageTime;
 
-    private HealthBarArmorStand healthBar; // <--- nasz pasek HP
+    private HealthBarArmorStand healthBar;
 
     public CoinBlock(Location location, double maxHealth) {
         this.location = location;
@@ -26,7 +26,6 @@ public class CoinBlock {
         this.breaking = false;
         this.lastDamageTime = 0;
 
-        // Gdy tworzymy CoinBlock, spawnujemy ArmorStand (pasek HP) minimalnie nad bloczkiem
         Location standLoc = location.clone().add(0, -0.4, 0);
         this.healthBar = new HealthBarArmorStand();
         this.healthBar.spawn(standLoc, currentHealth, maxHealth);
@@ -40,7 +39,6 @@ public class CoinBlock {
         currentHealth -= amount;
         lastDamageTime = currentTime;
 
-        // Update paska HP
         this.healthBar.updateHP(currentHealth, maxHealth);
 
         if (currentHealth <= 0) {
@@ -59,14 +57,14 @@ public class CoinBlock {
         }
 
         player.sendMessage("Zebrałeś monety!");
-                 player.getInventory().addItem(new ItemStack(Material.GOLD_INGOT, 3));
-                 player.playEffect(player.getLocation(), Effect.PHANTOM_BITE, null);
+        player.getInventory().addItem(new ItemStack(Material.GOLD_INGOT, 3));
+        player.playEffect(player.getLocation(), Effect.PHANTOM_BITE, null);
 
-                PetMiningPlugin.getInstance().getServer().getScheduler().runTaskLater(
-                        PetMiningPlugin.getInstance(),
-                        this::respawn,
-                        100L // 10 seconds
-                );
+        PetMiningPlugin.getInstance().getServer().getScheduler().runTaskLater(
+                PetMiningPlugin.getInstance(),
+                this::respawn,
+                100L
+        );
     }
 
     private void respawn() {
@@ -74,10 +72,7 @@ public class CoinBlock {
         block.setType(Material.BARRIER);
         currentHealth = maxHealth;
 
-        // Tworzymy nowy pasek HP
         this.healthBar = new HealthBarArmorStand();
         this.healthBar.spawn(location.clone().add(0, 0, 0), currentHealth, maxHealth);
-
-        // ewentualnie updateAppearance();
     }
 }

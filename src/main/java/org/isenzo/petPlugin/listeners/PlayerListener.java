@@ -2,7 +2,6 @@ package org.isenzo.petPlugin.listeners;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -30,37 +29,24 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
 
         Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
-            List<Pet> pets = petManager.getPlayerPets(player);
-            if (pets == null || pets.isEmpty()) {
-                player.sendMessage(ChatColor.RED + "Nie znaleziono żadnych zwierzaków.");
-                return;
-            }
+            List<Pet> activePets = petManager.getActivePetsFromDatabase(player);
 
-            for (Pet pet : pets) {
-                if (pet.isActive()) {
-                    Bukkit.getLogger().info("Przywracam peta: " + pet.getName());
+            if (activePets.isEmpty()) return;
 
-                    // 🔥 Ustawiamy właściciela na nowo
-                    pet.setOwner(player);
+            for (Pet pet : activePets) {
+                pet.setOwner(player);
+                pet.spawn(player.getLocation().add(0, 1.5, 0));
 
-                    Location spawnLocation = player.getLocation().add(0, 1.5, 0);
-                    pet.spawn(spawnLocation);
+                Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
+                    if (pet.getEntity() != null) {
+                        pet.getEntity().teleport(player.getLocation().add(0, 1.5, 0));
+                    }
+                }, 5L);
 
-                    Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
-                        if (pet.getEntity() != null) {
-                            pet.getEntity().teleport(player.getLocation().add(0, 1.5, 0));
-                        }
-                    }, 1L);
+                petSummoner.startPetMovement(pet, player);
+                petManager.addActivePet(player, pet.getId());
 
-                    petSummoner.summonPet(player, pet);
-
-                    // 🔥 Uruchamiamy ruch peta
-                    petSummoner.startPetMovement(pet, player);
-
-                    petManager.addActivePet(player, pet.getId());
-
-                    player.sendMessage(ChatColor.GREEN + "Your pet " + pet.getName() + " has returned!");
-                }
+                player.sendMessage(ChatColor.GREEN + "🐾 Twój pet " + pet.getName() + " wrócił!");
             }
         }, 20L);
     }
@@ -68,22 +54,23 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        List<Pet> activePets = petManager.getActivePetsFromDatabase(player);
 
-        Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
-            List<Pet> pets = petManager.getPlayerPets(player);
+        if (activePets.isEmpty()) return;
 
-            if (pets == null || pets.isEmpty()) return;
+        for (Pet pet : activePets) {
+            if (pet.getArmorStandId() != null) {
+                pet.killArmorStand();
 
-            for (Pet pet : pets) {
-                if (pet.isActive()) {
-                    petSummoner.despawnPet(player, pet);
-                    petManager.removeActivePet(player, pet.getId());
-
-                    if (pet.getEntity() != null) {
-                        pet.getEntity().remove();
-                    }
-                }
+                Bukkit.getLogger().info("[DEBUG] Usunięto ArmorStand dla: " + pet.getName());
+            } else {
+                Bukkit.getLogger().info("[DEBUG] Brak ArmorStandID dla: " + pet.getName());
             }
-        }, 10L);
+
+            pet.setArmorStandId(null);
+            petManager.updatePetInDatabase(pet);
+        }
+        petManager.clearPlayerCache(player);
     }
+
 }

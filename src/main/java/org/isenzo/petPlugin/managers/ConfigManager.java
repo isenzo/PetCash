@@ -33,7 +33,6 @@ public class ConfigManager {
         }
     }
 
-    // 📌 DODAJ TĘ METODĘ, ABY ZWRÓCIĆ KONFIGURACJĘ!
     public FileConfiguration getConfig() {
         return this.config;
     }

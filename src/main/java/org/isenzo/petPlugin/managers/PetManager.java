@@ -3,6 +3,7 @@ package org.isenzo.petPlugin.managers;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Updates;
+import lombok.Getter;
 import org.bson.Document;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -12,8 +13,8 @@ import org.isenzo.petPlugin.models.Pet;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
+@Getter
 public class PetManager {
     private PetSummoner petSummoner;
 
@@ -35,7 +36,6 @@ public class PetManager {
         this.maxOwnedPets = PetMiningPlugin.getInstance().getConfig().getInt("pets.max_owned", 10);
         this.maxActivePets = PetMiningPlugin.getInstance().getConfig().getInt("pets.max_active", 5);
 
-
         startAutoRefresh();
     }
 
@@ -48,10 +48,9 @@ public class PetManager {
                 if (!updatedPets.equals(petDataCache.get(playerUUID))) {
                     petDataCache.put(playerUUID, updatedPets);
                     playerPets.put(playerUUID, updatedPets);
-                    Bukkit.getLogger().info("[DEBUG] Zaktualizowano dane petów dla: " + player.getName());
                 }
             }
-        }, 0L, 100L); // 🔥 100 ticków = 5 sekund
+        }, 0L, 100L);
     }
 
     public List<Pet> getPlayerPets(Player player) {
@@ -76,6 +75,24 @@ public class PetManager {
         return pets;
     }
 
+    public List<Pet> getActivePetsFromDatabase(Player player) {
+        List<Pet> activePets = new ArrayList<>();
+
+        for (Document document : petsCollection.find(Filters.and(
+                Filters.eq("owner", player.getUniqueId().toString()),
+                Filters.eq("active", true)
+        ))) {
+            activePets.add(createPetFromDocument(document, player));
+        }
+
+        return activePets;
+    }
+
+    public boolean isPetActiveInDatabase(String petId) {
+        Document document = petsCollection.find(Filters.eq("_id", petId)).first();
+        return Objects.nonNull(document) && document.getBoolean("active", false);
+    }
+
     private Pet createPetFromDocument(Document doc, Player player) {
         String petId = doc.getString("_id");
         String petName = doc.getString("name");
@@ -84,10 +101,20 @@ public class PetManager {
         double experience = doc.containsKey("experience") ? ((Number) doc.get("experience")).doubleValue() : 0.0;
         boolean active = doc.getBoolean("active", false);
 
-        Pet pet = new Pet(petId, petName, petType, player, doc.getInteger("positionIndex", 0));
+        UUID armorStandId = null;
+        if (doc.containsKey("armorStandId") && doc.getString("armorStandId") != null && !doc.getString("armorStandId").isEmpty()) {
+            try {
+                armorStandId = UUID.fromString(doc.getString("armorStandId"));
+            } catch (IllegalArgumentException e) {
+                Bukkit.getLogger().warning("[PetPlugin] ⚠ Błędny UUID ArmorStand w bazie dla peta: " + petName);
+            }
+        }
+
+        Pet pet = new Pet(petId, petName, petType, player, doc.getInteger("positionIndex", 0), this);
         pet.setLevel(level);
         pet.setExperience(experience);
         pet.setActive(active);
+        pet.setArmorStandId(armorStandId);
 
         return pet;
     }
@@ -127,7 +154,7 @@ public class PetManager {
 
         int positionIndex = getPlayerPets(player).size();
 
-        Pet pet = new Pet(petId, petName, type, player, positionIndex);
+        Pet pet = new Pet(petId, petName, type, player, positionIndex, this);
 
         try {
             petsCollection.insertOne(pet.toDocument());
@@ -150,102 +177,82 @@ public class PetManager {
             return;
         }
 
-        if (activePets.getOrDefault(player.getUniqueId(), new HashSet<>()).size() >= maxActivePets) {
-            player.sendMessage(ChatColor.RED + "Masz już maksymalną liczbę przywołanych zwierzaków!");
-            return;
+        if (pet.getEntity() != null) {
+            pet.getEntity().remove();
+            pet.setEntity(null);
         }
 
         pet.setOwner(player);
-
-        Bukkit.getLogger().info("[DEBUG] Pet " + pet.getName() + " owner set to: " + pet.getOwner().getName());
-
-        petSummoner.summonPet(player, pet);
+        pet.spawn(player.getLocation().add(0, 1.5, 0));
 
         activePets.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>()).add(petId);
 
         pet.setActive(true);
         updatePetInDatabase(pet);
 
-        Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
-            if (pet.getEntity() != null) {
-                pet.getEntity().teleport(player.getLocation().add(0, 1.5, 0));
-            }
-        }, 1L);
-
         petSummoner.startPetMovement(pet, player);
     }
 
     public void updatePetInDatabase(Pet pet) {
         Bukkit.getScheduler().runTaskAsynchronously(PetMiningPlugin.getInstance(), () -> {
-            Document currentDoc = petsCollection.find(Filters.eq("_id", pet.getId())).first();
-
-            if (currentDoc != null) {
-                int currentLevel = ((Number) currentDoc.get("level")).intValue();
-                double currentExp = ((Number) currentDoc.get("experience")).doubleValue();
-
-                // 🔥 Jeśli poziom lub exp się zmienił w bazie, nie nadpisujemy!
-                if (currentLevel != pet.getLevel() || currentExp != pet.getExperience()) {
-                    Bukkit.getLogger().info("[DEBUG] Pet " + pet.getName() + " ma różne dane w bazie. Pobieram nowe...");
-                    loadPetsFromDatabase(pet.getOwner()); // 🔥 Pobieramy najnowsze dane
-                    return;
-                }
-            }
-
             try {
                 petsCollection.updateOne(
                         Filters.eq("_id", pet.getId()),
                         Updates.combine(
                                 Updates.set("active", pet.isActive()),
                                 Updates.set("level", pet.getLevel()),
-                                Updates.set("experience", pet.getExperience())
+                                Updates.set("experience", pet.getExperience()),
+                                Updates.set("armorStandId", pet.getArmorStandId() != null ? pet.getArmorStandId().toString() : null)
                         )
                 );
-                Bukkit.getLogger().info("[DEBUG] Zapisano zmiany w bazie dla " + pet.getName());
+                Bukkit.getLogger().info("[DEBUG] Zaktualizowano peta w bazie: " + pet.getName() + " (active=" + pet.isActive() + ", armorStandId=" + pet.getArmorStandId() + ")");
             } catch (Exception e) {
-                PetMiningPlugin.getInstance().getLogger().severe("Error updating pet in MongoDB: " + e.getMessage());
+                Bukkit.getLogger().severe("Błąd zapisu peta w bazie: " + e.getMessage());
             }
         });
     }
 
     public void despawnPet(Player player, String petId) {
         Optional<Pet> petOpt = findPetById(player, petId);
-        if (!petOpt.isPresent()) {
+        if (petOpt.isEmpty()) {
             player.sendMessage(ChatColor.RED + "Error: Pet not found!");
             return;
         }
 
         Pet pet = petOpt.get();
+
+        if (!pet.isActive()) {
+            player.sendMessage(ChatColor.RED + "This pet is not currently summoned!");
+            return;
+        }
+
+        pet.killArmorStand();
+        pet.setArmorStandId(null);
         pet.setActive(false);
-        pet.despawn();
-
-        petSummoner.despawnPet(player, pet);
-
-        activePets.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>()).remove(petId);
-
         updatePetInDatabase(pet);
 
-        player.sendMessage(ChatColor.YELLOW + "✔ You have despawned " + pet.getName() + ".");
+        playerPets.computeIfPresent(player.getUniqueId(), (uuid, pets) -> {
+            pets.remove(pet);
+            return pets.isEmpty() ? null : pets;
+        });
+
+        player.sendMessage(ChatColor.YELLOW + "You have despawned " + pet.getName() + ".");
     }
 
     public void saveAndDespawnPets(Player player) {
         UUID playerUUID = player.getUniqueId();
-        List<Pet> pets = getPlayerPets(player);
+        List<Pet> activePets = getActivePetsFromDatabase(player);
 
-        for (Pet pet : pets) {
-            if (pet.isActive()) {
-                if (pet.getEntity() != null && !pet.getEntity().isDead()) {
-                    pet.getEntity().remove();
-                }
-                pet.setActive(false);
-                pet.despawn();
-                updatePetInDatabase(pet);
+        for (Pet pet : activePets) {
+            if (Objects.nonNull(pet.getEntity())) {
+                pet.getEntity().remove();
+                pet.setEntity(null);
             }
+            pet.despawn();
         }
 
         playerPets.remove(playerUUID);
         activePets.remove(playerUUID);
-
-        playerPets.remove(playerUUID);
     }
 
     private Optional<Pet> findPetById(Player player, String petId) {
@@ -261,7 +268,6 @@ public class PetManager {
                 .filter(p -> p.getId().equals(petId))
                 .findFirst();
     }
-
 
     private int getPetCost(String type) {
         switch (type.toLowerCase()) {
@@ -281,22 +287,15 @@ public class PetManager {
     private void withdrawMoney(Player player, int amount) {
     }
 
-    public int getMaxOwnedPets() {
-        return maxOwnedPets;
-    }
-
-    public int getMaxActivePets() {
-        return maxActivePets;
-    }
-
     public void addActivePet(Player player, String petId) {
         activePets.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>()).add(petId);
     }
 
-    public void removeActivePet(Player player, String petId) {
-        Set<String> set = activePets.get(player.getUniqueId());
-        if (set != null) {
-            set.remove(petId);
-        }
+    public void clearPlayerCache(Player player) {
+        UUID playerUUID = player.getUniqueId();
+
+        playerPets.remove(playerUUID);
+        activePets.remove(playerUUID);
+        petDataCache.remove(playerUUID);
     }
 }

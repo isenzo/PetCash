@@ -20,13 +20,11 @@ public class CoinBlockManager {
         CoinBlock coinBlock = coinBlocks.get(block.getLocation());
         if (coinBlock == null) return;
 
-        // Sprawdzamy, czy gracz trzyma specjalny miecz
         if (!CoinItemUtil.isCoinSword(player.getInventory().getItemInMainHand())) {
             player.sendMessage("§cPotrzebujesz specjalnego miecza, aby niszczyć ten coinblock!");
             return;
         }
 
-        // Odejmuje np. 10 HP przy każdym \"uderzeniu\"
         coinBlock.damage(0.5, player);
     }
 

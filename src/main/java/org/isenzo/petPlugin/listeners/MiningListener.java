@@ -21,7 +21,6 @@ public class MiningListener implements Listener {
             return;
         }
 
-        // Check if the block is a coin block
         if (coinBlockManager.isCoinBlock(event.getBlock().getLocation())) {
             event.setCancelled(true);
             coinBlockManager.handleBlockDamage(event.getBlock(), event.getPlayer());
