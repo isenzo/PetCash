@@ -7,6 +7,7 @@ import lombok.Getter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.isenzo.petPlugin.commands.CoinBlockCommand;
+import org.isenzo.petPlugin.commands.CoinRemoverCommand;
 import org.isenzo.petPlugin.commands.CoinSwordCommand;
 import org.isenzo.petPlugin.commands.PetCommand;
 import org.isenzo.petPlugin.listeners.*;
@@ -83,6 +84,10 @@ public class PetMiningPlugin extends JavaPlugin {
             getCommand("coinsword").setExecutor(new CoinSwordCommand());
         }
 
+        if (getCommand("coinremover") != null) {
+            getCommand("coinremover").setExecutor(new CoinRemoverCommand());
+        }
+
         getServer().getPluginManager().registerEvents(new PetListener(), this);
         getServer().getPluginManager().registerEvents(new MiningListener(), this);
         getServer().getPluginManager().registerEvents(new GUIListener(), this);
@@ -95,6 +100,10 @@ public class PetMiningPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if(Objects.nonNull(coinBlockManager)) {
+            coinBlockManager.removeAllCoinBlocksFromWorldOnServerDisable();
+        }
+
         if (mongoClient != null) {
             try {
                 mongoClient.close();

@@ -1,6 +1,7 @@
 package org.isenzo.petPlugin.models;
 
 import lombok.Data;
+import org.bukkit.Bukkit;
 import org.bukkit.Effect;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,15 +17,17 @@ public class CoinBlock {
     private double currentHealth;
     private boolean breaking;
     private long lastDamageTime;
+    private Player owner;
 
     private HealthBarArmorStand healthBar;
 
-    public CoinBlock(Location location, double maxHealth) {
+    public CoinBlock(Location location, double maxHealth, Player owner) {
         this.location = location;
         this.maxHealth = maxHealth;
         this.currentHealth = maxHealth;
         this.breaking = false;
         this.lastDamageTime = 0;
+        this.owner = owner;
 
         Location standLoc = location.clone().add(0, -0.4, 0);
         this.healthBar = new HealthBarArmorStand();
@@ -32,47 +35,60 @@ public class CoinBlock {
     }
 
     public void damage(double amount, Player player) {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastDamageTime < 50) {
-            return;
-        }
         currentHealth -= amount;
-        lastDamageTime = currentTime;
-
-        this.healthBar.updateHP(currentHealth, maxHealth);
-
         if (currentHealth <= 0) {
             breakBlock(player);
         }
     }
 
-
     private void breakBlock(Player player) {
         Block block = location.getBlock();
         block.setType(Material.AIR);
 
-        if (healthBar != null) {
-            healthBar.remove();
-            healthBar = null;
-        }
-
         player.sendMessage("Zebrałeś monety!");
         player.getInventory().addItem(new ItemStack(Material.GOLD_INGOT, 3));
-        player.playEffect(player.getLocation(), Effect.PHANTOM_BITE, null);
+        player.playEffect(player.getLocation(), Effect.WITHER_BREAK_BLOCK, null);
+        removeHealthBar();
 
-        PetMiningPlugin.getInstance().getServer().getScheduler().runTaskLater(
-                PetMiningPlugin.getInstance(),
-                this::respawn,
-                100L
-        );
+        Bukkit.getLogger().info("[DEBUG] <CoinBlock.java> CoinBlock zniszczony, regeneracja za 5 sekund...");
+
+        // 📌 Przekazujemy obsługę respawnu do CoinBlockManager!
+        PetMiningPlugin.getInstance().getCoinBlockManager().scheduleRespawn(this);
     }
 
-    private void respawn() {
+
+    public void respawn() {
         Block block = location.getBlock();
-        block.setType(Material.BARRIER);
+        block.setType(Material.GOLD_BLOCK);
         currentHealth = maxHealth;
 
         this.healthBar = new HealthBarArmorStand();
-        this.healthBar.spawn(location.clone().add(0, 0, 0), currentHealth, maxHealth);
+        this.healthBar.spawn(location.clone().add(0.5, 1.3, 0.5), currentHealth, maxHealth);
+
+        Bukkit.getLogger().info("[DEBUG] <CoinBlock.java> CoinBlock odrodzony z HP = " + maxHealth);
     }
+
+    public void removeHealthBar() {
+        if (healthBar != null) {
+            healthBar.remove();
+            healthBar = null;
+            Bukkit.getLogger().info("[DEBUG] <CoinBlock.java> Usunięto pasek HP CoinBlocka!");
+        }
+    }
+
+    public void saveToDatabase() {
+        Bukkit.getLogger().info("[DEBUG] <CoinBlock.java> Zapisano CoinBlock do MongoDB: " + location);
+    }
+
+    public void playDamageEffect() {
+        location.getWorld().playSound(location, "entity.player.attack.strong", 1f, 1f);
+    }
+
+    public void spawnHealthBar() {
+        if (healthBar == null) {
+            this.healthBar = new HealthBarArmorStand();
+            this.healthBar.spawn(location.clone().add(0, 1, 0), currentHealth, maxHealth);
+        }
+    }
+
 }

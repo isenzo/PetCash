@@ -1,11 +1,11 @@
 name: PetPlugin
 version: "1.0"
 main: org.isenzo.petPlugin.PetMiningPlugin
-api-version: "1.21"
+api-version: "1.20"
 description: "Plugin do zarządzania zwierzakami w grze"
 libraries:
   - "org.mongodb:mongodb-driver-sync:4.9.1"
-author: "isenzo"
+author: "Senzo15"
 
 commands:
   pet:
@@ -17,11 +17,20 @@ commands:
   coinblock:
     description: "Stawia coin block"
     usage: /coinblock <hp>
+    permission: "coinblock.admin"
   coinsword:
     description: Daje graczowi specjalny miecz do niszczenia coinblocków
     usage: /coinsword
+  coinremover:
+    description: "Daje CoinBlock Remover do usuwania CoinBlocków"
+    usage: /coinremover
+    permission: coinblock.admin
+    permission-message: "Nie masz uprawnień do tej komendy."
 
 permissions:
+  coinblock.admin:
+    description: "Pozwala zarzadzac coinblockami"
+    default: true
   petplugin.use:
     description: "Pozwala używać komendy /pet"
     default: true

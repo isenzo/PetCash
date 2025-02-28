@@ -3,12 +3,12 @@ package org.isenzo.petPlugin.models;
 import lombok.Getter;
 import lombok.Setter;
 import org.bson.Document;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
+import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.isenzo.petPlugin.PetMiningPlugin;
 import org.isenzo.petPlugin.managers.PetManager;
 import org.isenzo.petPlugin.utils.SkullUtil;
@@ -29,6 +29,9 @@ public class Pet {
     private ArmorStand entity;
     private boolean active;
     private int positionIndex;
+    private int power;
+
+    private CoinBlock targetBlock;
 
     private static final String BASE64 = "d42e9dbd6eb544f6bb59cb2569e9113d750931e3ad01fd586eebd0f071e492d0";
 
@@ -44,6 +47,15 @@ public class Pet {
         this.active = false;
         this.positionIndex = positionIndex;
         this.petManager = petManager;
+        this.power = determinePower(type);
+    }
+
+    private int determinePower(String type) {
+        switch (type.toLowerCase()) {
+            case "silver": return 20;
+            case "radiation": return 50;
+            default: return 10;
+        }
     }
 
     public void spawn(Location location) {
@@ -68,7 +80,9 @@ public class Pet {
     }
 
     public void moveToPlayerSmoothly() {
-        if (entity == null || !active || owner == null) return;
+        if (entity == null || !active || owner == null) {
+            return;
+        }
 
         double angle = (positionIndex * (2.3 * Math.PI)) / 5;
         double offsetX = Math.cos(angle) * 1.2;
@@ -86,10 +100,10 @@ public class Pet {
     public void despawn() {
         if (Objects.nonNull(entity)) {
             if(!entity.isDead()) {
-                Bukkit.getLogger().info("[DEBUG] Usuwam encję peta: " + name);
+                Bukkit.getLogger().info("[DEBUG] <Pet.java> Usuwam encję peta: " + name);
                 entity.remove();
             }else {
-                Bukkit.getLogger().info("[DEBUG] Encja peta już była martwa: " + name);
+                Bukkit.getLogger().info("[DEBUG] <Pet.java> Encja peta już była martwa: " + name);
             }
             entity = null;
         }
@@ -97,7 +111,7 @@ public class Pet {
 
     public void killArmorStand() {
         if (armorStandId == null) {
-            Bukkit.getLogger().warning("[ERROR] Próba zabicia peta, ale armorStandId jest NULL!");
+            Bukkit.getLogger().warning("[ERROR] <Pet.java> Próba zabicia peta, ale armorStandId jest NULL!");
             return;
         }
 
@@ -117,7 +131,7 @@ public class Pet {
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "kill " + armorStandUUID);
             }
 
-            Bukkit.getLogger().info("[DEBUG] Usunięto ArmorStand: " + armorStandUUID);
+            Bukkit.getLogger().info("[DEBUG] <Pet.java> Usunięto ArmorStand: " + armorStandUUID);
         });
 
         armorStandId = null; // Resetujemy ID w obiekcie
@@ -134,5 +148,26 @@ public class Pet {
                 .append("active", active)
                 .append("positionIndex", positionIndex)
                 .append("armorStandId", armorStandId != null ? armorStandId.toString() : null);
+    }
+
+    public void updateEntityFromUUID() {
+        if (armorStandId == null) {
+            Bukkit.getLogger().warning("[DEBUG] <Pet.java> Pet " + name + " nie ma przypisanego ArmorStandId!");
+            return;
+        }
+
+        for (Entity entity : owner.getWorld().getEntities()) {
+            if (entity instanceof ArmorStand && entity.getUniqueId().equals(armorStandId)) {
+                this.entity = (ArmorStand) entity;
+                Bukkit.getLogger().info("[DEBUG] <Pet.java> Zaktualizowano encję peta " + name + " z bazowego ArmorStandId!");
+                return;
+            }
+        }
+
+        Bukkit.getLogger().warning("[DEBUG] <Pet.java> Nie znaleziono istniejącego ArmorStand dla peta " + name + "!");
+    }
+
+    public boolean isAttacking() {
+        return targetBlock != null;
     }
 }

@@ -56,7 +56,9 @@ public class PetSummoner {
     public void despawnPetOnCommand(Player player, Pet pet) {
         List<Pet> pets = activePets.get(player.getUniqueId());
 
-        if (Objects.isNull(pets)) return;
+        if (Objects.isNull(pets)) {
+            return;
+        }
 
         if (pets.contains(pet)) {
             pets.remove(pet);
@@ -99,5 +101,10 @@ public class PetSummoner {
         String formattedName = ChatColor.GOLD + pet.getName() + ChatColor.YELLOW + " [LvL " + pet.getLevel() + "]";
         pet.getEntity().setCustomName(formattedName);
         pet.getEntity().setCustomNameVisible(true);
+    }
+
+    public void stopPetMovement(Pet pet) {
+        Bukkit.getScheduler().cancelTasks(PetMiningPlugin.getInstance()); // Anulowanie bieżącego ruchu peta
+        Bukkit.getLogger().info("[DEBUG] 🛑 Ruch peta " + pet.getName() + " został ZATRZYMANY, ponieważ atakuje blok!");
     }
 }

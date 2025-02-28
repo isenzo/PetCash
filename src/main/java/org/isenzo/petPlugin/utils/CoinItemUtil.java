@@ -9,14 +9,14 @@ import java.util.Collections;
 
 public class CoinItemUtil {
 
-    private static final String SPECIAL_SWORD_NAME = ChatColor.GOLD + "Golden Killer";
+    private static final String SPECIAL_SWORD_NAME = ChatColor.GREEN + "Magiczna Flet";
 
     public static ItemStack createCoinSword() {
-        ItemStack sword = new ItemStack(Material.GOLD_NUGGET);
+        ItemStack sword = new ItemStack(Material.STICK);
         ItemMeta meta = sword.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(SPECIAL_SWORD_NAME);
-            meta.setLore(Collections.singletonList(ChatColor.YELLOW + "Użyj mnie, aby niszczyć coinblocki."));
+            meta.setLore(Collections.singletonList(ChatColor.YELLOW + "Rozkurwiator bloków"));
                     sword.setItemMeta(meta);
         }
         return sword;

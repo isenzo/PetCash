@@ -61,7 +61,7 @@ public class PetMenuGUI {
         List<String> lore = new ArrayList<>();
         lore.add("§7Type: " + pet.getType());
         lore.add("§7Level: " + pet.getLevel());
-        lore.add("§7XP: " + String.format("%.2f", pet.getExperience()));
+        lore.add("§7XP: " + String.format("%.2f", pet.getPower()));
         lore.add("");
 
         if (pet.isActive()) {

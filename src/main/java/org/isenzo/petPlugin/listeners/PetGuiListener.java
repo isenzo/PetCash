@@ -25,41 +25,48 @@ public class PetGuiListener implements Listener {
 
     @EventHandler
     public void onPetGUIClick(InventoryClickEvent event) {
-        if (!(event.getWhoClicked() instanceof Player)) return;
+        if (!(event.getWhoClicked() instanceof Player)) {
+            return;
+        }
         Player player = (Player) event.getWhoClicked();
 
-        if (event.getView().getTitle().equalsIgnoreCase(ChatColor.DARK_GREEN + "Your Pets 🐾")) {
-            event.setCancelled(true);
-            ItemStack clickedItem = event.getCurrentItem();
-
-            if (clickedItem == null || !clickedItem.hasItemMeta()) return;
-            ItemMeta meta = clickedItem.getItemMeta();
-
-            if (meta == null || meta.getLore() == null) return;
-
-            String petId = getPetIdFromLore(meta.getLore());
-            if (petId == null) {
-                player.sendMessage(ChatColor.RED + "Error: Pet ID not found!");
-                return;
-            }
-
-            boolean isActive = petManager.isPetActiveInDatabase(petId); // 🔥 Sprawdzamy status w bazie!
-
-            if (isActive) {
-                petManager.despawnPet(player, petId);
-                Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
-                    new PetGUI().openPetMenu(player);
-                }, 2L);
-                player.sendMessage(ChatColor.RED + "Your pet has been despawned!");
-            } else {
-                petManager.spawnPet(player, petId);
-                Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
-                    new PetGUI().openPetMenu(player);
-                }, 2L);
-                player.sendMessage(ChatColor.GREEN + "Your pet has been summoned!");
-            }
-            player.closeInventory();
+        // 📌 Sprawdzenie czy GUI to menu petów
+        if (!event.getView().getTitle().equalsIgnoreCase(ChatColor.DARK_GREEN + "Twoje Pety 🐾")) {
+            return;
         }
+
+        event.setCancelled(true); // 🔥 BLOKUJEMY WYCIĄGANIE PRZEDMIOTÓW!
+
+        ItemStack clickedItem = event.getCurrentItem();
+        if (clickedItem == null || !clickedItem.hasItemMeta()) {
+            return;
+        }
+
+        ItemMeta meta = clickedItem.getItemMeta();
+        if (meta == null || meta.getLore() == null) {
+            return;
+        }
+
+        String petId = getPetIdFromLore(meta.getLore());
+        if (petId == null) {
+            player.sendMessage(ChatColor.RED + "❌ Błąd: Nie znaleziono ID peta!");
+            return;
+        }
+
+        boolean isActive = petManager.isPetActiveInDatabase(petId);
+
+        if (isActive) {
+            petManager.despawnPet(player, petId);
+            player.sendMessage(ChatColor.RED + "❌ Twój pet został odwołany!");
+        } else {
+            petManager.spawnPet(player, petId);
+            player.sendMessage(ChatColor.GREEN + "✅ Twój pet został przywołany!");
+        }
+
+        // 🔥 Odświeżamy GUI po kliknięciu
+        Bukkit.getScheduler().runTaskLater(PetMiningPlugin.getInstance(), () -> {
+            new PetGUI().openPetMenu(player);
+        }, 1L);
     }
 
     private String getPetIdFromLore(List<String> lore) {

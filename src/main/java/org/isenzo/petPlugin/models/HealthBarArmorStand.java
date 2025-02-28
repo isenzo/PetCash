@@ -1,6 +1,7 @@
 package org.isenzo.petPlugin.models;
 
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -29,7 +30,7 @@ public class HealthBarArmorStand {
 
         stand.addEquipmentLock(EquipmentSlot.HEAD, ArmorStand.LockType.ADDING_OR_CHANGING);
 
-        ItemStack nugget = new ItemStack(Material.GOLD_NUGGET);
+        ItemStack nugget = new ItemStack(Material.GOLD_BLOCK);
         ItemMeta meta = nugget.getItemMeta();
         if (meta != null) {
             meta.setCustomModelData(2);
@@ -44,19 +45,36 @@ public class HealthBarArmorStand {
     }
 
     public void updateHP(double currentHp, double maxHp) {
-        if (stand != null && !stand.isDead()) {
-            String bar = getProgressBar(currentHp, maxHp, TOTAL_SEGMENTS);
-            stand.setCustomName(bar);
+        if (stand == null || stand.isDead()) {
+            Bukkit.getLogger().warning("[DEBUG] <HealthBarArmorStand.java> Próba aktualizacji paska HP, ale ArmorStand nie istnieje!");
+            return;
         }
+
+        String bar = getProgressBar(currentHp, maxHp, TOTAL_SEGMENTS);
+        stand.setCustomName(bar);
+        Bukkit.getLogger().info("[DEBUG] <HealthBarArmorStand.java> Pasek HP zaktualizowany: " + currentHp);
     }
 
     private String getProgressBar(double current, double max, int totalSegments) {
         double ratio = Math.max(0, Math.min(1, current / max));
         int filled = (int) Math.round(ratio * totalSegments);
 
+        ChatColor color;
+        if (ratio > 0.66) {
+            color = ChatColor.GREEN;
+        } else if (ratio > 0.33) {
+            color = ChatColor.YELLOW;
+        } else {
+            color = ChatColor.RED;
+        }
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < totalSegments; i++) {
-            sb.append(i < filled ? ChatColor.YELLOW + "|" : ChatColor.DARK_GRAY + "|");
+            if (i < filled) {
+                sb.append(color).append("|");
+            } else {
+                sb.append(ChatColor.GRAY).append("|");
+            }
         }
         return sb.toString();
     }
